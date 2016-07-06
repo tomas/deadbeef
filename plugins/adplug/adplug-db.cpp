@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include "../../deadbeef.h"
 #include "adplug.h"
+#include "realopl.h"
 #include "emuopl.h"
 #include "kemuopl.h"
 #include "surroundopl.h"
@@ -74,7 +75,11 @@ adplug_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     int samplerate = deadbeef->conf_get_int ("synth.samplerate", 44100);
     int bps = 16; // NOTE: there's no need to support 8bit input, because adplug simply downgrades 16bit signal to 8bits
     int channels = 2;
-    if (deadbeef->conf_get_int ("adplug.surround", 1)) {
+    
+    CRealopl * real = new CRealopl();
+    if (real->detect()) {
+        info->opl = real;
+    } else if (deadbeef->conf_get_int ("adplug.surround", 1)) {
         if (deadbeef->conf_get_int ("adplug.use_ken", 0)) {
             Copl *a = new CKemuopl(samplerate, bps == 16, false);
             Copl *b = new CKemuopl(samplerate, bps == 16, false);
