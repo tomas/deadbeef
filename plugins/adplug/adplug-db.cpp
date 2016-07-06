@@ -56,6 +56,7 @@ typedef struct {
     int currentsample;
     int subsong;
     int toadd;
+    int realOPL;
 } adplug_info_t;
 
 DB_fileinfo_t *
@@ -72,31 +73,38 @@ adplug_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     // return -1 on failure
     adplug_info_t *info = (adplug_info_t *)_info;
 
-    int samplerate = deadbeef->conf_get_int ("synth.samplerate", 44100);
-    int bps = 16; // NOTE: there's no need to support 8bit input, because adplug simply downgrades 16bit signal to 8bits
-    int channels = 2;
-    
     CRealopl * real = new CRealopl();
-    if (real->detect()) {
+    if (real->detect()) { // real OPL chip found
+
         info->opl = real;
-    } else if (deadbeef->conf_get_int ("adplug.surround", 1)) {
-        if (deadbeef->conf_get_int ("adplug.use_ken", 0)) {
-            Copl *a = new CKemuopl(samplerate, bps == 16, false);
-            Copl *b = new CKemuopl(samplerate, bps == 16, false);
-            info->opl = new CSurroundopl(a, b, bps == 16);
+        info->realOPL = 1;
+
+    } else {
+
+        info->realOPL = 0;
+        int samplerate = deadbeef->conf_get_int ("synth.samplerate", 44100);
+        int bps = 16; // NOTE: there's no need to support 8bit input, because adplug simply downgrades 16bit signal to 8bits
+        int channels = 2;
+
+        if (deadbeef->conf_get_int ("adplug.surround", 1)) {
+            if (deadbeef->conf_get_int ("adplug.use_ken", 0)) {
+                Copl *a = new CKemuopl(samplerate, bps == 16, false);
+                Copl *b = new CKemuopl(samplerate, bps == 16, false);
+                info->opl = new CSurroundopl(a, b, bps == 16);
+            }
+            else {
+                Copl *a = new CEmuopl(samplerate, bps == 16, false);
+                Copl *b = new CEmuopl(samplerate, bps == 16, false);
+                info->opl = new CSurroundopl(a, b, bps == 16);
+            }
         }
         else {
-            Copl *a = new CEmuopl(samplerate, bps == 16, false);
-            Copl *b = new CEmuopl(samplerate, bps == 16, false);
-            info->opl = new CSurroundopl(a, b, bps == 16);
-        }
-    }
-    else {
-        if (deadbeef->conf_get_int ("adplug.use_satoh", 0)) {
-            info->opl = new CEmuopl (samplerate, bps == 16, channels == 2);
-        }
-        else {
-            info->opl = new CKemuopl (samplerate, bps == 16, channels == 2);
+            if (deadbeef->conf_get_int ("adplug.use_satoh", 0)) {
+                info->opl = new CEmuopl (samplerate, bps == 16, channels == 2);
+            }
+            else {
+                info->opl = new CKemuopl (samplerate, bps == 16, channels == 2);
+            }
         }
     }
     deadbeef->pl_lock ();
@@ -165,7 +173,6 @@ adplug_read (DB_fileinfo_t *_info, char *bytes, int size) {
     int towrite = size/sampsize;
     char *sndbufpos = bytes;
 
-
     while (towrite > 0)
     {
       while (info->toadd < 0)
@@ -175,7 +182,7 @@ adplug_read (DB_fileinfo_t *_info, char *bytes, int size) {
 //        decoder->time_ms += 1000 / plr.p->getrefresh ();
       }
       i = min (towrite, (long) (info->toadd / info->decoder->getrefresh () + sampsize) & ~(sampsize-1));
-      info->opl->update ((short *) sndbufpos, i);
+      if (!info->realOPL) info->opl->update ((short *) sndbufpos, i);
       sndbufpos += i * sampsize;
       size -= i * sampsize;
       info->currentsample += i;
@@ -213,7 +220,7 @@ adplug_seek_sample (DB_fileinfo_t *_info, int sample) {
 
     info->toadd = 0;
     trace ("adplug: new position after seek: %d of %d\n", info->currentsample, info->totalsamples);
-    
+
     _info->readpos = (float)info->currentsample / _info->fmt.samplerate;
 
     return 0;
