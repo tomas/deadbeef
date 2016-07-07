@@ -40,6 +40,10 @@ int __cdecl _outp(unsigned short, int);
 #	include <pc.h>
 #	define INP	inportb
 #	define OUTP	outportb
+#elif defined(linux)
+# include <sys/io.h>
+# define INP inb
+# define OUTP outb
 #else				// no support on other platforms
 #	define INP(reg)		0
 #	define OUTP(reg, val)
