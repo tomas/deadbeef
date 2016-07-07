@@ -48,6 +48,7 @@ int
 adplug_stop (void);
 
 static const char settings_dlg[] =
+    "property \"Use Real OPL\" checkbox adplug.realopl 0;\n"
     "property \"Prefer Ken emu over Satoh (surround won't work)\" checkbox adplug.use_ken 0;\n"
     "property \"Enable surround\" checkbox adplug.surround 1;\n"
 ;
@@ -62,7 +63,7 @@ DB_decoder_t adplug_plugin = {
     .plugin.id = "adplug",
     .plugin.name = "Adplug player",
     .plugin.descr = "Adplug player (ADLIB OPL2/OPL3 emulator)",
-    .plugin.copyright = 
+    .plugin.copyright =
     "ADPLUG DeaDBeeF Player Plugin\n"
     "Copyright (C) 2009-2014 Alexey Yakovenko <waker@users.sourceforge.net>\n"
     "\n"
