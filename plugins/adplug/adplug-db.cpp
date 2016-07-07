@@ -73,18 +73,24 @@ adplug_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     // return -1 on failure
     adplug_info_t *info = (adplug_info_t *)_info;
 
-    CRealopl * real = new CRealopl();
-    if (real->detect()) { // real OPL chip found
+    int samplerate = deadbeef->conf_get_int ("synth.samplerate", 44100);
+    int bps = 16; // NOTE: there's no need to support 8bit input, because adplug simply downgrades 16bit signal to 8bits
+    int channels = 2;
 
-        info->opl = real;
-        info->realOPL = 1;
+    if (deadbeef->conf_get_int ("adplug.realopl", 1)) {
+
+        CRealopl * real = new CRealopl();
+        if (real->detect()) { // real OPL chip found
+            info->opl = real;
+            info->realOPL = 1;
+        } else {
+            trace ("adplug: failed to detect real OPL chip\n");
+            return -1;
+        }
 
     } else {
 
         info->realOPL = 0;
-        int samplerate = deadbeef->conf_get_int ("synth.samplerate", 44100);
-        int bps = 16; // NOTE: there's no need to support 8bit input, because adplug simply downgrades 16bit signal to 8bits
-        int channels = 2;
 
         if (deadbeef->conf_get_int ("adplug.surround", 1)) {
             if (deadbeef->conf_get_int ("adplug.use_ken", 0)) {
@@ -106,7 +112,9 @@ adplug_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
                 info->opl = new CKemuopl (samplerate, bps == 16, channels == 2);
             }
         }
+
     }
+
     deadbeef->pl_lock ();
     info->decoder = CAdPlug::factory (deadbeef->pl_find_meta (it, ":URI"), info->opl, CAdPlug::players);
     deadbeef->pl_unlock ();
