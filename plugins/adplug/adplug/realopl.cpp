@@ -43,7 +43,7 @@ int __cdecl _outp(unsigned short, int);
 #elif defined(linux)
 # include <sys/io.h>
 # define INP inb
-# define OUTP outb
+# define OUTP(reg,val) outb(val,reg)
 #else				// no support on other platforms
 #	define INP(reg)		0
 #	define OUTP(reg, val)
@@ -108,7 +108,20 @@ bool CRealopl::detect()
 {
   unsigned char	stat;
 
+#ifdef linux
+  if (ioperm(adlport, 2, 1) != 0) {
+    // cannot open port
+    return false;
+  }
+
+  if (ioperm(adlport + 2, 2, 1) != 0) {
+    // cannot open port
+    return false;
+  }
+#endif
+
   setchip(0);
+
   if(harddetect()) {
     // is at least OPL2, check for OPL3
     currType = TYPE_OPL2;
@@ -119,8 +132,9 @@ bool CRealopl::detect()
       setchip(1);
       if(harddetect())
 	currType = TYPE_DUAL_OPL2;
-    } else
+    } else {
       currType = TYPE_OPL3;
+    }
 
     setchip(0);
     return true;
